@@ -20,3 +20,15 @@
 # Go workspace file
 go.work
 go.work.sum
+
+# 秘密鍵ファイル
+*.key
+
+# 証明書署名要求
+*.csr
+
+# 証明書ファイル
+*.crt
+
+# シリアル番号ファイル
+*.srl
