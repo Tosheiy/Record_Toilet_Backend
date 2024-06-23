@@ -28,7 +28,7 @@ description, length, location, feelingの４つをbodyに含める。
 データベースに id, created_atを追加した状態で追加。
 ```
 {
-   "description": "t23s is test", 
+   "description": "this is test", 
    "length": 3,
    "location": "home",
    "feeling": 2
