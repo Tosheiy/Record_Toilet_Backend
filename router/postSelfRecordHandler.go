@@ -1,24 +1,39 @@
 package router
 
 import (
-	"fmt"
-	"hello/firebase_setting"
+	"database/sql"
 	"hello/model"
 	"log"
 	"net/http"
-	"strconv"
 	"strings"
 	"time"
-
-	// "time"
 	"unicode/utf8"
-
-	// "time"
 
 	"github.com/gin-gonic/gin"
 )
 
-func updateRecordHandler(c *gin.Context) {
+func postSelfRecordHandler(c *gin.Context) {
+	// paramの取得
+	utid := c.Param("utid")
+
+	var user model.USER
+	err := db.QueryRow("SELECT * FROM user_table WHERE utid = ?", utid).Scan(
+		&user.ID,
+		&user.UTID,
+		&user.UID,
+		&user.APIKEY,
+	)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			// レコードが見つからない場合
+			c.JSON(http.StatusNotFound, gin.H{"error": "User not found"})
+			return
+		}
+		// その他のエラーの場合
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Database query failed:"})
+		return
+	}
+
 	// Authorizationヘッダーの取得
 	authHeader := c.GetHeader("Authorization")
 	if authHeader == "" {
@@ -34,20 +49,13 @@ func updateRecordHandler(c *gin.Context) {
 	}
 	idToken := parts[1]
 
-	// トークンの検証
-	VerifiedToken, err := firebase_setting.VerifyIDToken(idToken)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+	// API キーの検証
+	if idToken != user.APIKEY {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid API key"})
+		c.Abort()
 		return
 	}
-	fmt.Printf("Verified user id: %+v\n", VerifiedToken.UID)
 
-	id, err := strconv.Atoi(c.Param("id"))
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "Invalid ID",
-		})
-	}
 	var new_t_record model.TOILET_RECORD
 	if err := c.ShouldBindJSON(&new_t_record); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
@@ -59,7 +67,7 @@ func updateRecordHandler(c *gin.Context) {
 		// 入力された日付のフォーマットが正しいかチェック
 		_, err := time.Parse("2006-01-02 15:04", new_t_record.Created_at)
 		if err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid date format. Expected format: 2006-01-02T15:04"})
 			return
 		}
 	} else {
@@ -73,10 +81,11 @@ func updateRecordHandler(c *gin.Context) {
 		return
 	}
 
-	result, err := db.Exec("UPDATE toilet_records SET description = ?, length = ?, location = ?, feeling = ?, created_at = ? WHERE id = ? AND uid = ?",
-		new_t_record.Description, new_t_record.Length, new_t_record.Location, new_t_record.Feeling, new_t_record.Created_at, id, VerifiedToken.UID)
+	_, err = db.Exec("INSERT INTO toilet_records (description, created_at, length, location, feeling, uid) VALUES (?, ?, ?, ?, ?, ?)",
+		new_t_record.Description, new_t_record.Created_at, new_t_record.Length, new_t_record.Location, new_t_record.Feeling, user.UID)
+
 	if err != nil {
-		log.Fatal(err)
+		log.Fatalln(err)
 	}
-	c.JSON(http.StatusOK, result)
+	c.JSON(http.StatusCreated, new_t_record)
 }

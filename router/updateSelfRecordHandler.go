@@ -6,13 +6,13 @@ import (
 	"hello/model"
 	"log"
 	"net/http"
+	"strings"
 
 	"github.com/gin-gonic/gin"
-
-	"strings"
 )
 
-func getAllRecordsHandler(c *gin.Context) {
+func updateSelfRecordHandler(c *gin.Context) {
+
 	// Authorizationヘッダーの取得
 	authHeader := c.GetHeader("Authorization")
 	if authHeader == "" {
@@ -36,21 +36,25 @@ func getAllRecordsHandler(c *gin.Context) {
 	}
 	fmt.Printf("Verified user id: %+v\n", VerifiedToken.UID)
 
-	rows := model.QueryDB(db, "SELECT * FROM toilet_records WHERE uid = ?", VerifiedToken.UID)
-	defer rows.Close()
-
-	var toilet_records []model.TOILET_RECORD
-	for rows.Next() {
-		var t_record model.TOILET_RECORD
-
-		err := rows.Scan(&t_record.ID, &t_record.Description, &t_record.Created_at, &t_record.Length, &t_record.Location, &t_record.Feeling, &t_record.Uid)
-		if err != nil {
-			log.Fatal(err)
-		}
-		// とってきたstring型のTIMEをTime.time型に変換し、それをレイアウトを少し変えて文字列型に再変換している（Str(RFC3339形式) -> Time.time -> Str）
-		t_record.Created_at = DBTimeToTime(t_record.Created_at)
-
-		toilet_records = append(toilet_records, t_record)
+	UTID, err := generateKey(32)
+	if err != nil {
+		log.Fatalln(err)
 	}
-	c.JSON(http.StatusOK, toilet_records)
+	APIKEY, err := generateKey(43)
+	if err != nil {
+		log.Fatalln(err)
+	}
+	APIKEY = "secret_" + APIKEY
+
+	_, err = db.Exec("UPDATE user_table SET utid = ?, apikey = ? WHERE uid = ?",
+		UTID, APIKEY, VerifiedToken.UID)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	var new_user model.USER
+	new_user.UTID = UTID
+	new_user.APIKEY = APIKEY
+
+	c.JSON(http.StatusCreated, new_user)
 }
