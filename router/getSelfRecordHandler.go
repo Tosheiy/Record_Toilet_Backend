@@ -6,13 +6,13 @@ import (
 	"hello/model"
 	"log"
 	"net/http"
+	"strings"
 
 	"github.com/gin-gonic/gin"
-
-	"strings"
 )
 
-func getAllRecordsHandler(c *gin.Context) {
+func getSelfRecordHandler(c *gin.Context) {
+
 	// Authorizationヘッダーの取得
 	authHeader := c.GetHeader("Authorization")
 	if authHeader == "" {
@@ -36,21 +36,20 @@ func getAllRecordsHandler(c *gin.Context) {
 	}
 	fmt.Printf("Verified user id: %+v\n", VerifiedToken.UID)
 
-	rows := model.QueryDB(db, "SELECT * FROM toilet_records WHERE uid = ?", VerifiedToken.UID)
+	rows := model.QueryDB(db, "SELECT * FROM user_table WHERE uid = ?", VerifiedToken.UID)
 	defer rows.Close()
 
-	var toilet_records []model.TOILET_RECORD
-	for rows.Next() {
-		var t_record model.TOILET_RECORD
+	var new_user model.USER
 
-		err := rows.Scan(&t_record.ID, &t_record.Description, &t_record.Created_at, &t_record.Length, &t_record.Location, &t_record.Feeling, &t_record.Uid)
+	if rows.Next() {
+		err := rows.Scan(&new_user.ID, &new_user.UTID, &new_user.UID, &new_user.APIKEY)
 		if err != nil {
 			log.Fatal(err)
 		}
-		// とってきたstring型のTIMEをTime.time型に変換し、それをレイアウトを少し変えて文字列型に再変換している（Str(RFC3339形式) -> Time.time -> Str）
-		t_record.Created_at = DBTimeToTime(t_record.Created_at)
-
-		toilet_records = append(toilet_records, t_record)
+		// 正常にユーザー情報を返す
+		c.JSON(http.StatusOK, new_user)
+	} else {
+		// ユーザーが見つからなかった場合の処理
+		c.JSON(http.StatusOK, gin.H{"utid": "none", "apikey": "none"})
 	}
-	c.JSON(http.StatusOK, toilet_records)
 }
