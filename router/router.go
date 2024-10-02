@@ -60,6 +60,7 @@ func RouteAPI() {
 
 	r.PUT("/toilet/self", updateSelfRecordHandler)
 
+	// r.RunTLS(":8080", "server.crt", "server.key")
 	// r.RunTLS(":8080", "./certs/server.crt", "./certs/server.key")
 	r.Run(":8080")
 	defer db.Close()
