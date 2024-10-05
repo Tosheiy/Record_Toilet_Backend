@@ -37,6 +37,7 @@ func updateRecordHandler(c *gin.Context) {
 	// トークンの検証
 	VerifiedToken, err := firebase_setting.VerifyIDToken(idToken)
 	if err != nil {
+		fmt.Println("Error loading location:", err)
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
@@ -44,12 +45,14 @@ func updateRecordHandler(c *gin.Context) {
 
 	id, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
+		fmt.Println("Error loading location:", err)
 		c.JSON(http.StatusBadRequest, gin.H{
 			"error": "Invalid ID",
 		})
 	}
 	var new_t_record model.TOILET_RECORD
 	if err := c.ShouldBindJSON(&new_t_record); err != nil {
+		fmt.Println("Error loading location:", err)
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
@@ -59,13 +62,18 @@ func updateRecordHandler(c *gin.Context) {
 		// 入力された日付のフォーマットが正しいかチェック
 		_, err := time.Parse("2006-01-02 15:04", new_t_record.Created_at)
 		if err != nil {
+			fmt.Println("Error loading location:", err)
 			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 			return
 		}
 	} else {
 		// Created_at が入力されていない場合は現在の時間を設定
-		current_Time := time.Now()
-		new_t_record.Created_at = current_Time.Format("2006-01-02 15:04")
+		new_t_record.Created_at, err = CreateNowTime()
+		if err != nil {
+			fmt.Println("Error loading location:", err)
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Create Time Error."})
+			return
+		}
 	}
 
 	if utf8.RuneCountInString(new_t_record.Location) > 20 || utf8.RuneCountInString(new_t_record.Description) > 50 {
@@ -73,7 +81,7 @@ func updateRecordHandler(c *gin.Context) {
 		return
 	}
 
-	result, err := db.Exec("UPDATE toilet_records SET description = ?, length = ?, location = ?, feeling = ?, created_at = ? WHERE id = ? AND uid = ?",
+	result, err := model.ExecDB("UPDATE toilet_records SET description = ?, length = ?, location = ?, feeling = ?, created_at = ? WHERE id = ? AND uid = ?",
 		new_t_record.Description, new_t_record.Length, new_t_record.Location, new_t_record.Feeling, new_t_record.Created_at, id, VerifiedToken.UID)
 	if err != nil {
 		log.Fatal(err)

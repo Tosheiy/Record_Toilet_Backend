@@ -11,16 +11,23 @@ import (
 
 var db *sql.DB
 
-func ConnectDB(driverName string, dataSourceName string) *sql.DB {
+func ConnectDB(driverName string, dataSourceName string) (*sql.DB, error) {
 	var err error
 	db, err = sql.Open(driverName, dataSourceName)
 	if err != nil {
 		log.Fatal(err)
+		return nil, err
+	}
+
+	// 接続が実際に確立されているか確認
+	err = db.Ping()
+	if err != nil {
+		return nil, err
 	}
 
 	// InitDB()
 
-	return db
+	return db, nil
 }
 
 func CloseDB() {
@@ -29,13 +36,25 @@ func CloseDB() {
 	}
 }
 
-func QueryDB(db *sql.DB, cmd string, args ...interface{}) *sql.Rows {
+func QueryDB(cmd string, args ...interface{}) *sql.Rows {
+
 	rows, err := db.Query(cmd, args...)
 	if err != nil {
 		log.Fatal(err)
 	}
 
 	return rows
+}
+
+
+func ExecDB(cmd string, args ...interface{}) (sql.Result, error) {
+
+	result, err := db.Exec(cmd, args...)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	return result, err
 }
 
 func InitDB() {

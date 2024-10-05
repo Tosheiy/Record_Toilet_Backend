@@ -36,7 +36,7 @@ func getSelfRecordHandler(c *gin.Context) {
 	}
 	fmt.Printf("Verified user id: %+v\n", VerifiedToken.UID)
 
-	rows := model.QueryDB(db, "SELECT * FROM user_table WHERE uid = ?", VerifiedToken.UID)
+	rows := model.QueryDB("SELECT * FROM user_table WHERE uid = ?", VerifiedToken.UID)
 	defer rows.Close()
 
 	var new_user model.USER

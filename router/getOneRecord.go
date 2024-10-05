@@ -43,7 +43,7 @@ func getOneRecordHandler(c *gin.Context) {
 		})
 	}
 
-	rows := model.QueryDB(db, "SELECT * FROM toilet_records WHERE id = ? AND uid = ?", id, VerifiedToken.UID)
+	rows := model.QueryDB("SELECT * FROM toilet_records WHERE id = ? AND uid = ?", id, VerifiedToken.UID)
 	defer rows.Close()
 
 	var toilet_records []model.TOILET_RECORD

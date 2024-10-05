@@ -1,0 +1,19 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Resources:
+  ToiletApiFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: main
+      Runtime: provided.al2
+      CodeUri: s3://mytoiletrecord/5a0402fbcaca0d27d825bbbdc388c66d
+      MemorySize: 128
+      Timeout: 15
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            Path: /{proxy+}
+            Method: ANY
+    Metadata:
+      SamResourceId: ToiletApiFunction

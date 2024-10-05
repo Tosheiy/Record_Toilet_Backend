@@ -3,6 +3,7 @@ package router
 import (
 	"fmt"
 	"hello/firebase_setting"
+	"hello/model"
 	"log"
 	"net/http"
 	"strconv"
@@ -42,7 +43,7 @@ func deleteRecordHandler(c *gin.Context) {
 		})
 	}
 
-	result, err := db.Exec("DELETE FROM toilet_records WHERE id = ? AND uid = ?", id, VerifiedToken.UID)
+	result, err := model.ExecDB("DELETE FROM toilet_records WHERE id = ? AND uid = ?", id, VerifiedToken.UID)
 	if err != nil {
 		log.Fatal(err)
 	}
