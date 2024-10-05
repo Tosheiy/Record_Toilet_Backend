@@ -13,6 +13,7 @@ import (
 )
 
 func getAllRecordsHandler(c *gin.Context) {
+
 	// Authorizationヘッダーの取得
 	authHeader := c.GetHeader("Authorization")
 	if authHeader == "" {
@@ -36,7 +37,9 @@ func getAllRecordsHandler(c *gin.Context) {
 	}
 	fmt.Printf("Verified user id: %+v\n", VerifiedToken.UID)
 
-	rows := model.QueryDB(db, "SELECT * FROM toilet_records WHERE uid = ?", VerifiedToken.UID)
+
+
+	rows := model.QueryDB("SELECT * FROM toilet_records WHERE uid = ?", VerifiedToken.UID)
 	defer rows.Close()
 
 	var toilet_records []model.TOILET_RECORD

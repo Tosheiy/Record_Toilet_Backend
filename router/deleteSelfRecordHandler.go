@@ -3,6 +3,7 @@ package router
 import (
 	"fmt"
 	"hello/firebase_setting"
+	"hello/model"
 	"log"
 	"net/http"
 	"strings"
@@ -35,7 +36,7 @@ func deleteSelfRecordHandler(c *gin.Context) {
 	}
 	fmt.Printf("Verified user id: %+v\n", VerifiedToken.UID)
 
-	result, err := db.Exec("DELETE FROM user_table WHERE uid = ?", VerifiedToken.UID)
+	result, err := model.ExecDB("DELETE FROM user_table WHERE uid = ?", VerifiedToken.UID)
 	if err != nil {
 		log.Fatal(err)
 		c.JSON(http.StatusNotFound, gin.H{"error": "User not found"})

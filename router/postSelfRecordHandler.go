@@ -2,8 +2,8 @@ package router
 
 import (
 	"database/sql"
+	"fmt"
 	"hello/model"
-	"log"
 	"net/http"
 	"strings"
 	"time"
@@ -72,8 +72,12 @@ func postSelfRecordHandler(c *gin.Context) {
 		}
 	} else {
 		// Created_at が入力されていない場合は現在の時間を設定
-		current_Time := time.Now()
-		new_t_record.Created_at = current_Time.Format("2006-01-02 15:04")
+		new_t_record.Created_at, err = CreateNowTime()
+		if err != nil {
+			fmt.Println("Error loading location:", err)
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Create Time Error."})
+			return
+		}
 	}
 
 	if utf8.RuneCountInString(new_t_record.Location) > 20 || utf8.RuneCountInString(new_t_record.Description) > 50 {
@@ -81,11 +85,12 @@ func postSelfRecordHandler(c *gin.Context) {
 		return
 	}
 
-	_, err = db.Exec("INSERT INTO toilet_records (description, created_at, length, location, feeling, uid) VALUES (?, ?, ?, ?, ?, ?)",
+	_, err = model.ExecDB("INSERT INTO toilet_records (description, created_at, length, location, feeling, uid) VALUES (?, ?, ?, ?, ?, ?)",
 		new_t_record.Description, new_t_record.Created_at, new_t_record.Length, new_t_record.Location, new_t_record.Feeling, user.UID)
-
 	if err != nil {
-		log.Fatalln(err)
+		c.JSON(http.StatusBadRequest, gin.H{"error": "DB挿入時にエラーが発生しました"})
+		return
 	}
+
 	c.JSON(http.StatusCreated, new_t_record)
 }

@@ -46,7 +46,7 @@ func updateSelfRecordHandler(c *gin.Context) {
 	}
 	APIKEY = "secret_" + APIKEY
 
-	_, err = db.Exec("UPDATE user_table SET utid = ?, apikey = ? WHERE uid = ?",
+	_, err = model.ExecDB("UPDATE user_table SET utid = ?, apikey = ? WHERE uid = ?",
 		UTID, APIKEY, VerifiedToken.UID)
 	if err != nil {
 		log.Fatal(err)

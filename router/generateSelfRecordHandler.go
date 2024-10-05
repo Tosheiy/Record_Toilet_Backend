@@ -48,7 +48,7 @@ func generateSelfRecordHandler(c *gin.Context) {
 	}
 	APIKEY = "secret_" + APIKEY
 
-	_, err = db.Exec("INSERT INTO user_table (uid, utid, apikey) VALUES (?, ?, ?)",
+	_, err = model.ExecDB("INSERT INTO user_table (uid, utid, apikey) VALUES (?, ?, ?)",
 		VerifiedToken.UID, UTID, APIKEY)
 	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "User is exsited"})
