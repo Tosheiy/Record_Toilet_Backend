@@ -4,9 +4,9 @@ Resources:
   ToiletApiFunction:
     Type: AWS::Serverless::Function
     Properties:
-      Handler: main
+      Handler: bootstrap
       Runtime: provided.al2
-      CodeUri: s3://mytoiletrecord/5a0402fbcaca0d27d825bbbdc388c66d
+      CodeUri: s3://mytoiletrecord/5ce32c09f723dd1bc7e44e7af6848e24
       MemorySize: 128
       Timeout: 15
       Events:
@@ -15,5 +15,15 @@ Resources:
           Properties:
             Path: /{proxy+}
             Method: ANY
+      VpcConfig:
+        SecurityGroupIds:
+        - sg-0417d1ff311ecd374
+        SubnetIds:
+        - subnet-0a8996648c897251f
+    Environment:
+      DB_HOST: mytoiletrecord.cpwiqm8ec2pr.ap-northeast-1.rds.amazonaws.com:3306
+      DB_USER: admin
+      DB_PASSWORD: 1049to1049ad
+      DB_NAME: mytoiletrecord
     Metadata:
       SamResourceId: ToiletApiFunction

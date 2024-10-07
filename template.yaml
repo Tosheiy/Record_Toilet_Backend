@@ -4,7 +4,7 @@ Resources:
   ToiletApiFunction:
     Type: AWS::Serverless::Function
     Properties:
-      Handler: main
+      Handler: bootstrap
       Runtime: provided.al2
       CodeUri: ./
       MemorySize: 128
@@ -15,3 +15,15 @@ Resources:
           Properties:
             Path: /{proxy+}
             Method: ANY
+      VpcConfig:
+        SecurityGroupIds:
+          - sg-0417d1ff311ecd374  # RDSが許可されているセキュリティグループ
+        SubnetIds:
+          - subnet-0a8996648c897251f  # 選択したサブネットのID1
+          # - subnet-0d27ba8b89e236507  # 選択したサブネットのID2
+          # - subnet-07dc40573a75b0ad6  # 選択したサブネットのID3
+    Environment:  # 環境変数のセクションを追加
+      DB_HOST: "mytoiletrecord.cpwiqm8ec2pr.ap-northeast-1.rds.amazonaws.com:3306"
+      DB_USER: "admin"
+      DB_PASSWORD: "1049to1049ad"
+      DB_NAME: "mytoiletrecord"
