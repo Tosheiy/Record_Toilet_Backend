@@ -3,61 +3,60 @@ package router
 import (
 	"crypto/rand"
 	"fmt"
-	"hello/firebase_setting"
+
 	"hello/model"
 	"log"
 	"math/big"
 	"net/http"
-	"strings"
 
 	"github.com/gin-gonic/gin"
 )
 
 func generateSelfRecordHandler(c *gin.Context) {
-
-	// Authorizationヘッダーの取得
-	authHeader := c.GetHeader("Authorization")
-	if authHeader == "" {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "Authorization header required"})
+	// Firebase認証
+	VerifiedToken, err := verifiedAuth(c)
+	if err != nil {
+		log.Println("Error in verifiedAuth:", err)
+		c.JSON(http.StatusForbidden, gin.H{"error": "Access denied"})
 		return
 	}
 
-	// Bearer プレフィックスを取り除く
-	parts := strings.SplitN(authHeader, " ", 2)
-	if len(parts) != 2 || parts[0] != "Bearer" {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid Authorization header format"})
-		return
-	}
-	idToken := parts[1]
-
-	// トークンの検証
-	VerifiedToken, err := firebase_setting.VerifyIDToken(idToken)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
-	}
-	fmt.Printf("Verified user id: %+v\n", VerifiedToken.UID)
-
-	UTID, err := generateKey(32)
-	if err != nil {
-		log.Fatalln(err)
-	}
-	APIKEY, err := generateKey(43)
-	if err != nil {
-		log.Fatalln(err)
-	}
-	APIKEY = "secret_" + APIKEY
-
-	_, err = model.ExecDB("INSERT INTO user_table (uid, utid, apikey) VALUES (?, ?, ?)",
-		VerifiedToken.UID, UTID, APIKEY)
-	if err != nil {
+	// 同じUIDがテーブルに存在しないことを確認
+	existedUser, _ := model.CheckUserRecord(VerifiedToken.UID)
+	if existedUser != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "User is exsited"})
 		return
 	}
 
+	// selfPost用UTIDを作成（32文字）
+	UTID, err := generateKey(32)
+	if err != nil {
+		log.Println("Error in generateKey:", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Internal server error"})
+		return
+	}
+	// selfPost用APIKEYを作成（43文字＋7文字）
+	APIKEY, err := generateKey(43)
+	if err != nil {
+		log.Println("Error in generateKey:", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Internal server error"})
+		return
+	}
+	APIKEY = "secret_" + APIKEY //secret_接頭語を作成
+
+
 	var new_user model.USER
+	new_user.UID = VerifiedToken.UID
 	new_user.UTID = UTID
 	new_user.APIKEY = APIKEY
+
+	// userをuser_tableに追加
+	err = model.InsertUserRecord(new_user)
+	if err != nil {
+		log.Println("Error in InsertUserRecord:", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Internal server error"})
+		return
+	}
 
 	c.JSON(http.StatusCreated, new_user)
 }

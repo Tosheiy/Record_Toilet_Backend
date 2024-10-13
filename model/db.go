@@ -1,114 +1,171 @@
 package model
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 	"log"
-
-
-	_ "github.com/mattn/go-sqlite3"
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
+	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
+	"github.com/google/uuid"
 )
 
-var db *sql.DB
+var svc *dynamodb.Client
 
-func ConnectDB(driverName string, dataSourceName string) (*sql.DB, error) {
-	var err error
-	db, err = sql.Open(driverName, dataSourceName)
+func ConnectDB() (*sql.DB, error) {
+	// AWS SDKの設定を読み込む
+	cfg, err := config.LoadDefaultConfig(context.TODO(), config.WithRegion("ap-northeast-1"))
 	if err != nil {
 		log.Fatal(err)
 		return nil, err
 	}
 
-	// 接続が実際に確立されているか確認
-	err = db.Ping()
+	// DynamoDBクライアントを初期化
+	svc = dynamodb.NewFromConfig(cfg)
+
+	// テスト
+	tableName := "user_table"
+	input := &dynamodb.DescribeTableInput{
+		TableName: aws.String(tableName),
+	}
+	// DescribeTableでテーブル情報を取得
+	result, err := svc.DescribeTable(context.TODO(), input)
 	if err != nil {
-		return nil, err
+		log.Fatal("使用するテーブルが作成されていますん")
+		return nil, fmt.Errorf("failed to describe table: %v", err)
 	}
 
-	InitDB()
+	fmt.Printf("Table %s exists. Status: %s\n", tableName, string(result.Table.TableStatus))
 
-	return db, nil
-}
+	// InitDB()
 
-func CloseDB() {
-	if db != nil {
-		db.Close()
-	}
-}
-
-func QueryDB(cmd string, args ...interface{}) *sql.Rows {
-
-	rows, err := db.Query(cmd, args...)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	return rows
-}
-
-
-func ExecDB(cmd string, args ...interface{}) (sql.Result, error) {
-
-	result, err := db.Exec(cmd, args...)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	return result, err
+	return nil, nil
 }
 
 func InitDB() {
-	// Read the SQL statements from the init.sql file
-	// sqlBytes, err := os.ReadFile("./init/init.sql")
-	// if err != nil {
-	// 	log.Fatalf("Failed to read init.sql file: %v", err)
-	// }
+	// NoSQL
 
-	// sqlStatements := string(sqlBytes)
+	tableName := "toilet_records"
 
-	// // テーブル作成実行
-	// fmt.Println(sqlStatements)
-	// _, err = db.Exec(sqlStatements)
-	// if err != nil {
-	// 	log.Fatal(err)
-	// }
-	// fmt.Println("Table created successfully!")
+	// テーブルの存在確認
+	exists, err := tableExists(tableName)
+	if err != nil {
+		log.Fatalf("failed to check if table exists, %v", err)
+	}
 
-    // Create database
-    _, err := db.Exec("CREATE DATABASE IF NOT EXISTS RecordToilet;")
-    if err != nil {
-        log.Fatalf("Error creating database: %v", err)
-    }
+	if exists {
+		fmt.Printf("Table %s already exists.\n", tableName)
+		return // すでにテーブルが存在する場合は何もしない
+	}
+	// テーブル作成リクエスト
+	input := &dynamodb.CreateTableInput{
+		TableName: aws.String("toilet_records"),
+		KeySchema: []types.KeySchemaElement{
+			{
+				AttributeName: aws.String("uid"),
+				KeyType:       types.KeyTypeHash, // パーティションキー
+			},
+			{
+				AttributeName: aws.String("id"),
+				KeyType:       types.KeyTypeRange, // ソートキー
+			},
+		},
+		AttributeDefinitions: []types.AttributeDefinition{
+			{
+				AttributeName: aws.String("uid"),
+				AttributeType: types.ScalarAttributeTypeS, // 文字列型
+			},
+			{
+				AttributeName: aws.String("id"),
+				AttributeType: types.ScalarAttributeTypeS, // 文字列型
+			},
+		},
+		ProvisionedThroughput: &types.ProvisionedThroughput{
+			ReadCapacityUnits:  aws.Int64(5),
+			WriteCapacityUnits: aws.Int64(5),
+		},
+	}
 
-    // Use the database
-    _, err = db.Exec("USE RecordToilet;")
-    if err != nil {
-        log.Fatalf("Error selecting database: %v", err)
-    }
+	// テーブルを作成
+	_, err = svc.CreateTable(context.TODO(), input)
+	if err != nil {
+		log.Fatalf("failed to create table, %v", err)
+	}
 
-    // Create tables
-    _, err = db.Exec(`CREATE TABLE IF NOT EXISTS toilet_records (
-        id INT AUTO_INCREMENT PRIMARY KEY,
-        description TEXT,
-        created_at DATETIME,
-        length INT,
-        location TEXT,
-        feeling INT,
-        uid VARCHAR(255)
-    );`)
-    if err != nil {
-        log.Fatalf("Error creating table toilet_records: %v", err)
-    }
+	fmt.Println("Table created successfully!")
 
-    _, err = db.Exec(`CREATE TABLE IF NOT EXISTS user_table (
-        id INT AUTO_INCREMENT PRIMARY KEY,
-        utid VARCHAR(32) UNIQUE NOT NULL,
-        uid VARCHAR(255) UNIQUE NOT NULL,
-        apikey VARCHAR(50) UNIQUE NOT NULL
-    );`)
-    if err != nil {
-        log.Fatalf("Error creating table user_table: %v", err)
-    }
+	tableName = "user_table"
 
-    fmt.Println("Tables created successfully!")
+	// テーブルの存在確認
+	exists, err = tableExists(tableName)
+	if err != nil {
+		log.Fatalf("failed to check if table exists, %v", err)
+	}
+
+	if exists {
+		fmt.Printf("Table %s already exists.\n", tableName)
+		return // すでにテーブルが存在する場合は何もしない
+	}
+
+	// テーブル作成リクエスト
+	input = &dynamodb.CreateTableInput{
+		TableName: aws.String("user_table"),
+		KeySchema: []types.KeySchemaElement{
+			{
+				AttributeName: aws.String("utid"), // パーティションキー
+				KeyType:       types.KeyTypeHash,
+			},
+			{
+				AttributeName: aws.String("uid"), // ソートキー
+				KeyType:       types.KeyTypeRange,
+			},
+		},
+		AttributeDefinitions: []types.AttributeDefinition{
+			{
+				AttributeName: aws.String("utid"),         // uidを属性定義に追加
+				AttributeType: types.ScalarAttributeTypeS, // 文字列型
+			},
+			{
+				AttributeName: aws.String("uid"),          // utidを属性定義に追加
+				AttributeType: types.ScalarAttributeTypeS, // 文字列型
+			},
+		},
+		ProvisionedThroughput: &types.ProvisionedThroughput{
+			ReadCapacityUnits:  aws.Int64(5),
+			WriteCapacityUnits: aws.Int64(5),
+		},
+		// Global Secondary Indexの設定
+		GlobalSecondaryIndexes: []types.GlobalSecondaryIndex{
+			{
+				IndexName: aws.String("UIDIndex"), // インデックス名
+				KeySchema: []types.KeySchemaElement{
+					{
+						AttributeName: aws.String("uid"), // uid を GSI のパーティションキーとして指定
+						KeyType:       types.KeyTypeHash,
+					},
+				},
+				Projection: &types.Projection{
+					ProjectionType: types.ProjectionTypeAll, // 必要に応じて項目を選択
+				},
+				ProvisionedThroughput: &types.ProvisionedThroughput{
+					ReadCapacityUnits:  aws.Int64(5),
+					WriteCapacityUnits: aws.Int64(5),
+				},
+			},
+		},
+	}
+
+	// テーブルを作成
+	_, err = svc.CreateTable(context.TODO(), input)
+	if err != nil {
+		log.Fatalf("failed to create user_table, %v", err)
+	}
+
+	fmt.Println("user_table created successfully!")
+}
+
+func GenerateID() string {
+	return uuid.NewString() // 新しいUUIDを生成
 }

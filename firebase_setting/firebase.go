@@ -27,7 +27,6 @@ func Init() {
 
 func VerifyIDToken(idToken string) (*auth.Token, error) {
 	// Firebase IDトークンの検証
-	log.Printf("errorっっっっっっっっっっっっっっっっっっっっっっっっっっっっっっっっっっっっっr")
 	token, err := AuthClient.VerifyIDToken(context.Background(), idToken)
 	if err != nil {
 		// エラーが発生した場合、エラーを返す
