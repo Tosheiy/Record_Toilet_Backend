@@ -1,42 +1,56 @@
 # Record_Toilet_Backend
 トイレの記録を行うRESTAPIを実装したバックエンド
-TLSを用いてHTTPSに対応
 
 ## 技術スタック
 * Gin
-* sqlite3
-* TLS
+* DyanamoDB
+* CloudFront
+* Lambda
 
-## データベース
-### toilet_records
-| 　　　　カラム名 　　　　| 　　　　　　　説明 　　　　　　　　　|
-|:-----------|:------------|
-| id |(INTEDER)　一意に割り振られる |
-| description |(TEXT)　説明     |
-| created_at |(DATETIME) いつPOSTメソッドにより作成されたか自動で決定  |
-| length |(INTEGER) トイレにいた長さ  |
-| location |(TEXT) 場所       |
-| feeling |(INTEGER) 0,1,2の3段階評価     |
----
-主にユーザーが設定する必要があるのが
-description, length, location, feelingの４つ
+
 ## APIリファレンス
-### GET "/toilet"
-データベースにあるすべての記録を返す
-### POST "/toilet"
-description, length, location, feelingの４つをbodyに含める。
-データベースに id, created_atを追加した状態で追加。
-```
+
+このドキュメントは、トイレ記録を管理するためのAPIエンドポイントについて説明しています。このAPIはGo言語とGinフレームワークを使用して構築されており、以下の機能を提供します。
+
+### エンドポイント一覧
+
+### 1. トイレ記録をすべて取得
+**GET** `/toilet`
+
+データベースからすべてのトイレ記録を取得します。
+
+### 2. トイレ記録を挿入
+**POST** `/toilet`
+
+新しいトイレ記録をデータベースに挿入します。リクエストボディには、記録に必要な情報を含める必要があります。
+
+### 3. 指定されたIDのトイレ記録を取得
+**GET** `/toilet/:id`
+
+指定されたIDのトイレ記録をデータベースから取得します。
+
+### 4. 指定されたIDのトイレ記録を更新
+**PUT** `/toilet/:id`
+
+指定されたIDのトイレ記録の内容を更新します。
+
+### 5. 指定されたIDのトイレ記録を削除
+**DELETE** `/toilet/:id`
+
+指定されたIDのトイレ記録をデータベースから削除します。
+
+### 6. 自分用のトイレ記録をUTIDとともに登録
+**POST** `/toilet/self/:utid`
+
+指定された`UTID`と関連付けられた自己記録を登録します。リクエストボディはJSON形式で、以下のフィールドが必要です。
+
+#### リクエストボディ (JSON形式)
+```json
 {
-   "description": "this is test", 
-   "length": 3,
-   "location": "home",
-   "feeling": 2
+    "description": "This istes",
+    "created_at": "2022-01-02 13:04",
+    "length_time": 5,
+    "location_at": "seruhutesuto",
+    "feeling": 4
 }
-```
-### GET "/toilet/:id"
-一致する id の記録を一つ返す
-### PUT "/toilet/:id"
-一致する　id の記録を更新
-### DELETE "/toilet/:id"
-一致する　id の記録を削除
+
